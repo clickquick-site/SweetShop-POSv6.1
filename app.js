@@ -4,7 +4,7 @@
 
 // ── IndexedDB Setup ──────────────────────────────────────────
 const DB_NAME = 'POSDZ_DB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let db = null;
 
 function openDB() {
