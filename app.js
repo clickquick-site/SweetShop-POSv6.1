@@ -1158,7 +1158,7 @@ function injectHeader() {
   if (!el) return;
   el.innerHTML =
     '<button class="menu-btn" id="menuBtn" onclick="document.getElementById(\'sidebar\').classList.toggle(\'open\');document.getElementById(\'sidebarOverlay\').classList.toggle(\'open\');">&#9776;</button>'
-    + '<button id="bellBtn" onclick="toggleNotifPanel()" style="background:none;border:none;color:var(--text-primary);font-size:1.3rem;cursor:pointer;padding:6px 8px;position:relative;flex-shrink:0;">&#128276;'
+    + '<button id="bellBtn" onclick="event.stopPropagation();toggleNotifPanel()" style="background:none;border:none;color:var(--text-primary);font-size:1.3rem;cursor:pointer;padding:6px 8px;position:relative;flex-shrink:0;">&#128276;'
     + '<span id="notifBadge" style="display:none;position:absolute;top:2px;right:2px;background:var(--danger);color:#fff;font-size:.6rem;font-weight:800;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center;"></span>'
     + '</button>'
     + '<span class="store-name" id="headerStoreName" style="flex:1;text-align:center;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 8px;"></span>'
@@ -1271,32 +1271,63 @@ function _renderBell() {
 
 // ── Toggle notification panel ─────────────────────────────────
 function toggleNotifPanel() {
-  // يبحث عن أي panel إشعارات مُنشأ
-  const panel = document.getElementById('_notifPanel') || document.getElementById('notifPanel');
-  if (!panel) return;
-  if (panel.style.display !== 'none') {
+  var panel = document.getElementById('notifPanel') || document.getElementById('_notifPanel');
+
+  // إذا لم يكن panel موجوداً أنشئه في body
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'notifPanel';
+    document.body.appendChild(panel);
+  }
+
+  // إغلاق إذا مفتوح
+  if (panel.style.display === 'block') {
     panel.style.display = 'none';
     return;
   }
-  // احسب موضع الجرس
-  const bell = document.getElementById('_notifBell') || document.getElementById('bellBtn');
+
+  // حساب موضع الجرس
+  var bell = document.getElementById('bellBtn') || document.getElementById('_notifBell');
+  var top = 64, right = 8;
   if (bell) {
-    const r = bell.getBoundingClientRect();
-    panel.style.position   = 'fixed';
-    panel.style.top        = (r.bottom + 6) + 'px';
-    panel.style.right      = '8px';
-    panel.style.left       = 'auto';
-    panel.style.width      = 'min(340px, 95vw)';
-    panel.style.zIndex     = '99999';
-    panel.style.maxHeight  = '480px';
-    panel.style.overflowY  = 'auto';
-    panel.style.background = 'var(--bg-card)';
-    panel.style.border     = '1px solid var(--border)';
-    panel.style.borderRadius = 'var(--radius)';
-    panel.style.boxShadow  = '0 12px 40px rgba(0,0,0,.65)';
+    var r = bell.getBoundingClientRect();
+    top   = r.bottom + 4;
+    right = Math.max(8, window.innerWidth - r.right);
   }
+
+  // تطبيق الـ styles مباشرة بألوان ثابتة واضحة
+  panel.style.cssText = [
+    'display:block',
+    'position:fixed',
+    'top:' + top + 'px',
+    'right:' + right + 'px',
+    'left:auto',
+    'width:320px',
+    'max-width:95vw',
+    'max-height:480px',
+    'overflow-y:auto',
+    'z-index:2147483647',
+    'background:#1e1e2e',
+    'border:2px solid #7c3aed',
+    'border-radius:14px',
+    'box-shadow:0 16px 48px rgba(0,0,0,0.8)',
+    'font-family:Cairo,sans-serif',
+    'direction:rtl'
+  ].join(';');
+
+  // رسم محتوى الإشعارات
   _renderNotifPanel(panel);
-  panel.style.display = 'block';
+
+  // إغلاق عند النقر خارج الـ panel
+  document.addEventListener('click', function outsideClick(e) {
+    if (panel.style.display === 'none') { document.removeEventListener('click', outsideClick); return; }
+    var bellEl = document.getElementById('bellBtn') || document.getElementById('_notifBell');
+    var clickedBell = bellEl && (e.target === bellEl || bellEl.contains(e.target));
+    if (!panel.contains(e.target) && !clickedBell) {
+      panel.style.display = 'none';
+      document.removeEventListener('click', outsideClick);
+    }
+  });
 }
 function _toggleNotifPanel() { toggleNotifPanel(); }
 
@@ -1908,10 +1939,7 @@ async function classifyProduct(product) {
   return { cls, badge, label, totalSold };
 }
 
-// ── Notification panel toggle (v7 uses _toggleNotifPanel) ───────
-function toggleNotifPanel() {
-  _toggleNotifPanel();
-}
+// ── Notification panel toggle ───────────────────────
 
 // ── openVKB / closeVKB v7 ───────────────────────────────────────
 // New v7 VKB container support (used by pages with id="vkbContainer")
