@@ -1141,15 +1141,17 @@ function _inputDialog(label, defaultVal = '') {
 function injectHeader() {
   const el = document.getElementById('appHeader');
   if (!el) return;
-  el.innerHTML = '<button class="menu-btn" id="menuBtn">&#9776;</button>'
-    + '<span class="store-name" id="headerStoreName">POS DZ</span>'
-    + '<div id="headerNotifWrap" style="position:relative;margin-right:auto;">'
-    + '<button id="bellBtn" onclick="toggleNotifPanel()" style="background:none;border:none;color:var(--text-primary);font-size:1.3rem;cursor:pointer;padding:6px;position:relative;">&#128276;'
+  el.innerHTML =
+    '<button class="menu-btn" id="menuBtn" onclick="document.getElementById(\'sidebar\').classList.toggle(\'open\');document.getElementById(\'sidebarOverlay\').classList.toggle(\'open\');">&#9776;</button>'
+    + '<button id="bellBtn" onclick="toggleNotifPanel()" style="background:none;border:none;color:var(--text-primary);font-size:1.3rem;cursor:pointer;padding:6px 8px;position:relative;flex-shrink:0;">&#128276;'
     + '<span id="notifBadge" style="display:none;position:absolute;top:2px;right:2px;background:var(--danger);color:#fff;font-size:.6rem;font-weight:800;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center;"></span>'
     + '</button>'
-    + '<div id="notifPanel" style="display:none;position:absolute;top:44px;right:0;width:300px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:500;max-height:360px;overflow-y:auto;"></div>'
+    + '<span class="store-name" id="headerStoreName" style="flex:1;text-align:center;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 8px;"></span>'
+    + '<div class="app-brand" style="display:flex;flex-direction:column;align-items:flex-start;gap:0;">'
+    + '<span style="font-size:1rem;font-weight:900;"><span style="color:var(--primary);">POS</span><span style="color:#fff;"> DZ</span></span>'
+    + '<span id="clockDisplay" style="font-size:.62rem;color:var(--text-secondary);white-space:nowrap;"></span>'
     + '</div>'
-    + '<div class="app-brand"><span class="brand-title">POS DZ</span><span class="brand-clock" id="clockDisplay"></span></div>';
+    + '<div id="notifPanel" style="display:none;position:absolute;top:56px;left:8px;width:min(320px,95vw);background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:600;max-height:400px;overflow-y:auto;"></div>';
 }
 
 // ── Init ──────────────────────────────────────────────────────
@@ -1218,7 +1220,8 @@ function _markAllRead() {
 // ── Inject bell button into every page header ─────────────────
 function _injectBell() {
   const header = document.querySelector('.app-header');
-  if (!header || document.getElementById('_notifBell')) return;
+  // Skip if bell already injected by injectHeader() (id=bellBtn) or already injected (_notifBell)
+  if (!header || document.getElementById('_notifBell') || document.getElementById('bellBtn')) return;
 
   // Bell button — inserted BEFORE the menu button
   const menuBtn = header.querySelector('.menu-btn');
@@ -1277,7 +1280,7 @@ function _injectBell() {
 
 // ── Render badge count ─────────────────────────────────────────
 function _renderBell() {
-  const badge = document.getElementById('_notifBadge');
+  const badge = document.getElementById('notifBadge') || document.getElementById('_notifBadge');
   if (!badge) return;
   const unread = _loadNotifs().filter(n => !n.read).length;
   if (unread > 0) {
@@ -1289,20 +1292,29 @@ function _renderBell() {
 }
 
 // ── Toggle notification panel ─────────────────────────────────
-function _toggleNotifPanel() {
-  const panel = document.getElementById('_notifPanel');
+function toggleNotifPanel() {
+  const panel = document.getElementById('notifPanel') || document.getElementById('_notifPanel');
   if (!panel) return;
   if (panel.style.display === 'none' || !panel.style.display) {
-    _renderNotifPanel();
+    _renderNotifPanel(panel);
     panel.style.display = 'block';
+    setTimeout(() => {
+      document.addEventListener('click', function closer(e) {
+        if (!panel.contains(e.target) && e.target.id !== 'bellBtn') {
+          panel.style.display = 'none';
+          document.removeEventListener('click', closer);
+        }
+      });
+    }, 50);
   } else {
     panel.style.display = 'none';
   }
 }
+function _toggleNotifPanel() { toggleNotifPanel(); }
 
 // ── Render notification list inside panel ─────────────────────
-function _renderNotifPanel() {
-  const panel = document.getElementById('_notifPanel');
+function _renderNotifPanel(panelEl) {
+  const panel = panelEl || document.getElementById('notifPanel') || document.getElementById('_notifPanel');
   if (!panel) return;
   const list   = _loadNotifs();
   const unread = list.filter(n => !n.read).length;
@@ -1520,6 +1532,8 @@ const TRANSLATIONS = {
     month:'الشهر', year:'السنة', salesTotal:'إجمالي المبيعات',
     debtTotal:'إجمالي الديون', profit:'الربح', cost:'التكلفة',
     confirm:'تأكيد', yes:'نعم', no:'لا',
+    repDashboard:'لوحة التحكم', repDaily:'المداخيل اليومية', repDebts:'الديون', repFamilies:'مداخيل العائلات', repProducts:'مداخيل السلع', repScale:'مداخيل الميزان', repPeriodWeek:'أسبوعي', repPeriodMonth:'شهري', repPeriodYear:'سنوي', repToday:'اليوم', repBackToSale:'رجوع للبيع',
+    custAdd:'إضافة زبون', custFilterAll:'الكل', custFilterDebt:'المديونون', custFilterClear:'بدون ديون', custName:'الاسم', custPhone:'الهاتف',
   },
   fr: {
     navSale:'Point de vente', navInventory:'Inventaire', navCustomers:'Clients',
