@@ -449,13 +449,16 @@ input,select,textarea,button {
 .textarea-field { resize:vertical; min-height:80px; }
 
 /* Search bar */
+.search-wrap {
+  position:relative;
+  margin-bottom:16px;
+}
 .search-bar {
   display:flex; align-items:center;
   background:var(--bg-input);
   border:1px solid var(--border);
   border-radius:var(--radius);
   padding:0 14px; gap:10px;
-  margin-bottom:16px;
   transition:border-color 0.2s,box-shadow 0.2s;
 }
 .search-bar:focus-within {
@@ -742,13 +745,13 @@ input,select,textarea,button {
    AUTOCOMPLETE
    ══════════════════════════════════════════════════════════════ */
 .autocomplete-list {
-  position:absolute; top:100%; right:0; left:0; z-index:50;
+  position:fixed;
+  z-index:9999;
   background:var(--bg-card);
   border:1px solid var(--primary);
-  border-top:none;
-  border-radius:0 0 var(--radius-sm) var(--radius-sm);
-  max-height:230px; overflow-y:auto;
-  box-shadow:0 10px 28px rgba(0,0,0,0.45);
+  border-radius:var(--radius-sm);
+  max-height:260px; overflow-y:auto;
+  box-shadow:0 12px 40px rgba(0,0,0,0.7);
   display:none;
 }
 .autocomplete-list.open { display:block; }
