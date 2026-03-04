@@ -1165,8 +1165,15 @@ function injectHeader() {
     + '<div class="app-brand" style="display:flex;flex-direction:column;align-items:flex-start;gap:0;">'
     + '<span style="font-size:1rem;font-weight:900;"><span style="color:var(--primary);">POS</span><span style="color:#fff;"> DZ</span></span>'
     + '<span id="clockDisplay" style="font-size:.62rem;color:var(--text-secondary);white-space:nowrap;"></span>'
-    + '</div>'
-    + '<div id="notifPanel" style="display:none;"></div>';
+    + '</div>';
+
+  // notifPanel يُنشأ في body مباشرة — خارج الهيدر تماماً
+  if (!document.getElementById('notifPanel')) {
+    const panel = document.createElement('div');
+    panel.id = 'notifPanel';
+    panel.style.cssText = 'display:none;position:fixed;z-index:99999;';
+    document.body.appendChild(panel);
+  }
 }
 
 // ── Init ──────────────────────────────────────────────────────
