@@ -616,14 +616,16 @@ function initSearch() {
   const input = document.getElementById('searchInput');
   const list  = document.getElementById('autocompleteList');
 
-  input.addEventListener('input', () => {
+  input.addEventListener('input', async () => {
     const q = input.value.trim();
     if (!q) { _searchMatches=[]; list.innerHTML=''; list.style.display='none'; return; }
+    // Reload products fresh from DB each time (picks up newly added products)
+    allProducts = await dbGetAll('products');
     const ql = q.toLowerCase();
     _searchMatches = allProducts.filter(p => {
       if (!p||!p.name) return false;
       return p.name.toLowerCase().includes(ql) ||
-             (p.barcode && p.barcode.includes(q)) ||
+             (p.barcode && String(p.barcode).includes(q)) ||
              (p.ref && p.ref.toLowerCase().includes(ql));
     }).slice(0, 10);
     if (!_searchMatches.length) {
@@ -645,17 +647,19 @@ function initSearch() {
   });
 
   // Enter في البحث → إضافة المنتج الأول مباشرة
-  input.addEventListener('keydown', e => {
+  input.addEventListener('keydown', async e => {
     if (e.key === 'Enter') {
       e.preventDefault();
       if (_searchMatches.length > 0) {
         selectProduct(_searchMatches[0].id);
         playSound('add');
       } else if (input.value.trim()) {
-        // لا يوجد تطابق — محاولة مسح الباركود
-        const p = allProducts.find(x => x.barcode === input.value.trim());
+        // لا يوجد تطابق — محاولة مسح الباركود (reload from DB)
+        allProducts = await dbGetAll('products');
+        const barVal = input.value.trim();
+        const p = allProducts.find(x => String(x.barcode) === barVal);
         if (p) { selectProduct(p.id); playSound('add'); }
-        else toast('المنتج غير موجود', 'warning');
+        else toast('المنتج غير موجود: ' + barVal, 'warning');
       }
     }
   });
