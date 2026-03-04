@@ -8,7 +8,7 @@
   <style>
     body { overflow: hidden; }
     .sale-layout { display: flex; flex-direction: column; height: 100vh; }
-    .sale-body   { flex: 1; display: flex; flex-direction: column; padding: 10px 12px; gap: 7px; overflow: hidden; }
+    .sale-body   { flex: 1; display: flex; flex-direction: column; padding: 10px 12px; gap: 7px; overflow: visible; min-height: 0; }
 
     /* Search */
     .search-wrap  { position: relative; }
@@ -612,41 +612,66 @@ function clearCart() {
 // ── Search ──
 let _searchMatches = [];
 
+function _positionList(input, list) {
+  const r = input.getBoundingClientRect();
+  list.style.top   = (r.bottom + 4) + 'px';
+  list.style.left  = r.left + 'px';
+  list.style.width = r.width + 'px';
+}
+
 function initSearch() {
   const input = document.getElementById('searchInput');
   const list  = document.getElementById('autocompleteList');
 
+  window.addEventListener('resize', () => {
+    if (list.style.display !== 'none') _positionList(input, list);
+  });
+
   input.addEventListener('input', async () => {
     const q = input.value.trim();
-    if (!q) { _searchMatches=[]; list.innerHTML=''; list.style.display='none'; return; }
-    // Reload products fresh from DB each time (picks up newly added products)
+    if (!q) {
+      _searchMatches = [];
+      list.style.display = 'none';
+      list.innerHTML = '';
+      return;
+    }
+    // إعادة تحميل من DB في كل بحث لضمان التزامن مع المخزون
     allProducts = await dbGetAll('products');
     const ql = q.toLowerCase();
     _searchMatches = allProducts.filter(p => {
-      if (!p||!p.name) return false;
-      return p.name.toLowerCase().includes(ql) ||
-             (p.barcode && String(p.barcode).includes(q)) ||
-             (p.ref && p.ref.toLowerCase().includes(ql));
-    }).slice(0, 10);
+      if (!p || !p.name) return false;
+      return p.name.toLowerCase().includes(ql)
+          || (p.barcode && String(p.barcode).includes(q))
+          || (p.ref    && p.ref.toLowerCase().includes(ql));
+    }).slice(0, 12);
+
+    _positionList(input, list);
+
     if (!_searchMatches.length) {
-      if (allProducts.length === 0) {
-        list.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text-secondary);font-size:.9rem;">⚠️ لا يوجد منتجات — أضف منتجات من إدارة المخزون</div>';
-        list.style.display = 'block';
-      } else {
-        list.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-secondary);font-size:.9rem;">🔍 لا توجد نتائج لـ: ' + q + '</div>';
-        list.style.display = 'block';
-      }
+      list.innerHTML = allProducts.length === 0
+        ? '<div style="padding:14px;text-align:center;color:var(--text-secondary);font-size:.9rem;">⚠️ لا يوجد منتجات — أضف منتجات من إدارة المخزون</div>'
+        : '<div style="padding:12px;text-align:center;color:var(--text-secondary);font-size:.9rem;">🔍 لا توجد نتائج لـ \"' + q + '\"</div>';
+      list.style.display = 'block';
       return;
     }
+
+    list.innerHTML = _searchMatches.map(p => {
+      const stock = p.quantity !== undefined ? p.quantity : (p.stock !== undefined ? p.stock : null);
+      let stockBadge = '';
+      if (stock !== null) {
+        if (stock <= 0)  stockBadge = '<span style="color:var(--danger);font-size:.72rem;margin-right:4px;">(نفذ)</span>';
+        else if (stock <= 5) stockBadge = '<span style="color:#f59e0b;font-size:.72rem;margin-right:4px;">(' + stock + ' متبقي)</span>';
+      }
+      const price = (p.sellPrice || 0).toFixed(2);
+      return '<div class="autocomplete-item" onmousedown="event.preventDefault();selectProduct(' + p.id + ')" style="cursor:pointer;">'
+           + '<span style="font-weight:700;color:var(--text-primary);">' + p.name + stockBadge + '</span>'
+           + '<span style="color:var(--primary-light);font-weight:800;">' + price + ' ' + currency + '</span>'
+           + '</div>';
+    }).join('');
     list.style.display = 'block';
-    list.innerHTML = _searchMatches.map(p =>
-      `<div class="autocomplete-item" onclick="selectProduct(${p.id})">
-        <span style="font-weight:700;">${p.name}</span>
-        <span class="item-price">${p.sellPrice.toFixed(2)} ${currency}</span>
-      </div>`).join('');
   });
 
-  // Enter في البحث → إضافة المنتج الأول مباشرة
+  // Enter key → add first result or search by barcode
   input.addEventListener('keydown', async e => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -654,7 +679,6 @@ function initSearch() {
         selectProduct(_searchMatches[0].id);
         playSound('add');
       } else if (input.value.trim()) {
-        // لا يوجد تطابق — محاولة مسح الباركود (reload from DB)
         allProducts = await dbGetAll('products');
         const barVal = input.value.trim();
         const p = allProducts.find(x => String(x.barcode) === barVal);
@@ -662,20 +686,50 @@ function initSearch() {
         else toast('المنتج غير موجود: ' + barVal, 'warning');
       }
     }
+    // Arrow keys navigation
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const items = list.querySelectorAll('.autocomplete-item');
+      if (!items.length) return;
+      let cur = list.querySelector('.autocomplete-item.selected');
+      if (cur) cur.classList.remove('selected');
+      if (e.key === 'ArrowDown') {
+        const next = cur ? (cur.nextElementSibling || items[0]) : items[0];
+        if (next) next.classList.add('selected');
+      } else {
+        const prev = cur ? (cur.previousElementSibling || items[items.length-1]) : items[items.length-1];
+        if (prev) prev.classList.add('selected');
+      }
+    }
   });
 
-  input.addEventListener('focus', () => { if (input.value.trim()) input.dispatchEvent(new Event('input')); });
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.search-wrap')) { list.innerHTML=''; list.style.display='none'; }
+  // Re-show on focus if has value
+  input.addEventListener('focus', () => {
+    if (input.value.trim()) input.dispatchEvent(new Event('input'));
+  });
+
+  // Close on outside click
+  document.addEventListener('mousedown', e => {
+    if (!e.target.closest('.search-wrap') && !e.target.closest('.autocomplete-list')) {
+      list.style.display = 'none';
+      list.innerHTML = '';
+      _searchMatches = [];
+    }
   });
 }
 
-function selectProduct(id) {
-  const p = allProducts.find(x => x.id === id);
+async function selectProduct(id) {
+  // Lookup from DB directly to ensure freshness
+  let p = allProducts.find(x => x.id === id);
+  if (!p) {
+    allProducts = await dbGetAll('products');
+    p = allProducts.find(x => x.id === id);
+  }
   if (p) {
     addToCart(p);
     document.getElementById('searchInput').value = '';
     document.getElementById('autocompleteList').style.display = 'none';
+    _searchMatches = [];
   }
 }
 
