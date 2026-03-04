@@ -79,44 +79,59 @@ function openDB() {
 }
 
 // ── Generic DB Helpers ───────────────────────────────────────
-function dbGet(store, key) {
+async function dbGet(store, key) {
+  if (!db) await openDB();
   return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readonly');
-    const req = tx.objectStore(store).get(key);
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(req.error);
+    try {
+      const tx = db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).get(key);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    } catch(e) { rej(e); }
   });
 }
-function dbGetAll(store) {
+async function dbGetAll(store) {
+  if (!db) await openDB();
   return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readonly');
-    const req = tx.objectStore(store).getAll();
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(req.error);
+    try {
+      const tx = db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).getAll();
+      req.onsuccess = () => res(req.result || []);
+      req.onerror = () => rej(req.error);
+    } catch(e) { rej(e); }
   });
 }
-function dbPut(store, data) {
+async function dbPut(store, data) {
+  if (!db) await openDB();
   return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readwrite');
-    const req = tx.objectStore(store).put(data);
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(req.error);
+    try {
+      const tx = db.transaction(store, 'readwrite');
+      const req = tx.objectStore(store).put(data);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    } catch(e) { rej(e); }
   });
 }
-function dbAdd(store, data) {
+async function dbAdd(store, data) {
+  if (!db) await openDB();
   return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readwrite');
-    const req = tx.objectStore(store).add(data);
-    req.onsuccess = () => res(req.result);
-    req.onerror = () => rej(req.error);
+    try {
+      const tx = db.transaction(store, 'readwrite');
+      const req = tx.objectStore(store).add(data);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    } catch(e) { rej(e); }
   });
 }
-function dbDelete(store, key) {
+async function dbDelete(store, key) {
+  if (!db) await openDB();
   return new Promise((res, rej) => {
-    const tx = db.transaction(store, 'readwrite');
-    const req = tx.objectStore(store).delete(key);
-    req.onsuccess = () => res();
-    req.onerror = () => rej(req.error);
+    try {
+      const tx = db.transaction(store, 'readwrite');
+      const req = tx.objectStore(store).delete(key);
+      req.onsuccess = () => res();
+      req.onerror = () => rej(req.error);
+    } catch(e) { rej(e); }
   });
 }
 function dbGetByIndex(store, indexName, value) {
@@ -2054,6 +2069,8 @@ document.addEventListener('focusin', async (e) => {
   if (!['INPUT','TEXTAREA'].includes(el.tagName)) return;
   if (el.type === 'date' || el.type === 'file' || el.type === 'checkbox' || el.type === 'radio') return;
   _vkbTarget = el;
+  // Don't auto-open VKB for search inputs (breaks autocomplete)
+  if (el.id === 'searchInput') return;
   const auto = await getSetting('touchKeyboard').catch(() => '0');
   if (auto === '1') openVKB(el);
 });
