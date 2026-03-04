@@ -1166,7 +1166,7 @@ function injectHeader() {
     + '<span style="font-size:1rem;font-weight:900;"><span style="color:var(--primary);">POS</span><span style="color:#fff;"> DZ</span></span>'
     + '<span id="clockDisplay" style="font-size:.62rem;color:var(--text-secondary);white-space:nowrap;"></span>'
     + '</div>'
-    + '<div id="notifPanel" style="display:none;position:absolute;top:56px;left:8px;width:min(320px,95vw);background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:600;max-height:400px;overflow-y:auto;"></div>';
+    + '<div id="notifPanel" style="display:none;"></div>';
 }
 
 // ── Init ──────────────────────────────────────────────────────
@@ -1310,7 +1310,27 @@ function _renderBell() {
 function toggleNotifPanel() {
   const panel = document.getElementById('notifPanel') || document.getElementById('_notifPanel');
   if (!panel) return;
+
   if (panel.style.display === 'none' || !panel.style.display) {
+    // موضع الـ panel بجانب زر الجرس بـ position:fixed
+    const bell = document.getElementById('bellBtn');
+    if (bell) {
+      const r = bell.getBoundingClientRect();
+      Object.assign(panel.style, {
+        position: 'fixed',
+        top: (r.bottom + 6) + 'px',
+        right: '8px',
+        left: 'auto',
+        width: 'min(320px, 95vw)',
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius)',
+        boxShadow: '0 8px 32px rgba(0,0,0,.6)',
+        zIndex: '9999',
+        maxHeight: '420px',
+        overflowY: 'auto',
+      });
+    }
     _renderNotifPanel(panel);
     panel.style.display = 'block';
     setTimeout(() => {
