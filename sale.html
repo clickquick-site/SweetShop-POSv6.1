@@ -414,12 +414,21 @@ function renderCart() {
 }
 
 function addToCart(product) {
+  const stock = product.quantity !== undefined ? product.quantity : 9999;
   const idx = cart.findIndex(i => i.productId === product.id);
   if (idx >= 0) {
+    if (cart[idx].quantity >= stock) {
+      toast('لا يمكن إضافة أكثر من ' + stock + ' — الكمية المتوفرة في المخزون', 'warning');
+      return;
+    }
     cart[idx].quantity++;
     cart[idx].total = cart[idx].quantity * cart[idx].unitPrice;
   } else {
-    cart.push({ productId:product.id, name:product.name, quantity:1, unitPrice:product.sellPrice, total:product.sellPrice });
+    if (stock <= 0) {
+      toast('هذا المنتج نفذ من المخزون', 'warning');
+      return;
+    }
+    cart.push({ productId:product.id, name:product.name, quantity:1, unitPrice:product.sellPrice, total:product.sellPrice, stock:stock });
   }
   saveCartSession(); renderCart(); updateTotal(); playSound('add');
 }
@@ -427,13 +436,23 @@ function addToCart(product) {
 function changeQty(idx, delta) {
   const newQ = cart[idx].quantity + delta;
   if (newQ <= 0) { removeFromCart(idx); return; }
+  const stock = cart[idx].stock !== undefined ? cart[idx].stock : 9999;
+  if (newQ > stock) {
+    toast('الكمية المتوفرة في المخزون: ' + stock + ' فقط', 'warning');
+    return;
+  }
   cart[idx].quantity = newQ;
   cart[idx].total = newQ * cart[idx].unitPrice;
   saveCartSession(); renderCart(); updateTotal();
 }
 
 function updateQty(idx, val) {
-  const q = Math.max(1, parseInt(val) || 1);
+  const stock = cart[idx].stock !== undefined ? cart[idx].stock : 9999;
+  let q = Math.max(1, parseInt(val) || 1);
+  if (q > stock) {
+    q = stock;
+    toast('الكمية المتوفرة في المخزون: ' + stock + ' فقط', 'warning');
+  }
   cart[idx].quantity = q;
   cart[idx].total = q * cart[idx].unitPrice;
   saveCartSession(); renderCart(); updateTotal();
