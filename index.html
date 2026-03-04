@@ -175,7 +175,6 @@
       </button>
 
       <div class="error-msg" id="errorMsg"></div>
-      <div id="loginHint" style="display:none;margin-top:8px;padding:8px 14px;background:rgba(124,58,237,0.12);border:1px solid var(--primary);border-radius:10px;color:var(--primary-light);font-size:.85rem;text-align:center;"></div>
 
     <div class="card-footer">
       <p>POS DZ v7.0.0 &nbsp;|&nbsp; 2026 بوس ديزاد — جميع الحقوق محفوظة ®</p>
@@ -332,11 +331,6 @@ async function loadUsers() {
 
   if (!users || users.length === 0) {
     // حالة طارئة: DB تعطل
-    const hint = document.getElementById('loginHint');
-    if (hint) {
-      hint.innerHTML = '⚠️ لا يوجد مستخدمون. <a href="#" onclick="resetAndReload()" style="color:var(--primary);">انقر هنا لإعادة التهيئة</a>';
-      hint.style.display = 'block';
-    }
     return;
   }
 
@@ -351,15 +345,6 @@ async function loadUsers() {
   // Auto-fill if remembered
   const saved = localStorage.getItem('posdz_last_user');
   if (saved) sel.value = saved;
-
-  // Show default credentials hint on very first run
-  if (users.length === 1 && users[0].username === 'ADMIN') {
-    const hint = document.getElementById('loginHint');
-    if (hint) {
-      hint.textContent = '🔑 المستخدم الافتراضي: ADMIN — الرقم السري: 1234';
-      hint.style.display = 'block';
-    }
-  }
 }
 
 // ── إعادة تهيئة قاعدة البيانات ──
