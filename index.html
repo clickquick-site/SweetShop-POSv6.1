@@ -175,7 +175,7 @@
       </button>
 
       <div class="error-msg" id="errorMsg"></div>
-    </div>
+      <div id="loginHint" style="display:none;margin-top:8px;padding:8px 14px;background:rgba(124,58,237,0.12);border:1px solid var(--primary);border-radius:10px;color:var(--primary-light);font-size:.85rem;text-align:center;"></div>
 
     <div class="card-footer">
       <p>POS DZ v7.0.0 &nbsp;|&nbsp; 2026 بوس ديزاد — جميع الحقوق محفوظة ®</p>
@@ -310,18 +310,64 @@ function togglePassword() {
 async function loadUsers() {
   await openDB();
   await applyTheme();
-  const users = await dbGetAll('users');
+
+  let users = await dbGetAll('users');
+
+  // إذا لم يوجد أي مستخدم — أنشئ admin افتراضي تلقائياً
+  if (!users || users.length === 0) {
+    try {
+      await dbAdd('users', {
+        username: 'ADMIN',
+        password: hashPassword('1234'),
+        role: 'admin',
+        active: 1,
+        createdAt: new Date().toISOString()
+      });
+    } catch(e) {}
+    users = await dbGetAll('users');
+  }
+
   const sel = document.getElementById('usernameSelect');
   sel.innerHTML = '<option value="">-- اختر المستخدم --</option>';
-  users.forEach(u => {
+
+  if (!users || users.length === 0) {
+    // حالة طارئة: DB تعطل
+    const hint = document.getElementById('loginHint');
+    if (hint) {
+      hint.innerHTML = '⚠️ لا يوجد مستخدمون. <a href="#" onclick="resetAndReload()" style="color:var(--primary);">انقر هنا لإعادة التهيئة</a>';
+      hint.style.display = 'block';
+    }
+    return;
+  }
+
+  users.filter(u => u.active !== 0).forEach(u => {
     const opt = document.createElement('option');
     opt.value = u.username;
-    opt.textContent = u.username + (u.role === 'admin' ? ' 👑' : u.role === 'manager' ? ' 🛡' : ' 👤');
+    opt.textContent = u.username
+      + (u.role === 'admin' ? ' 👑' : u.role === 'manager' ? ' 🛡' : ' 👤');
     sel.appendChild(opt);
   });
+
   // Auto-fill if remembered
   const saved = localStorage.getItem('posdz_last_user');
   if (saved) sel.value = saved;
+
+  // Show default credentials hint on very first run
+  if (users.length === 1 && users[0].username === 'ADMIN') {
+    const hint = document.getElementById('loginHint');
+    if (hint) {
+      hint.textContent = '🔑 المستخدم الافتراضي: ADMIN — الرقم السري: 1234';
+      hint.style.display = 'block';
+    }
+  }
+}
+
+// ── إعادة تهيئة قاعدة البيانات ──
+async function resetAndReload() {
+  if (!confirm('سيتم حذف جميع البيانات وإعادة التهيئة. هل أنت متأكد؟')) return;
+  indexedDB.deleteDatabase('POSDZ_DB');
+  localStorage.clear();
+  setTimeout(() => location.reload(), 500);
 }
 
 // ── Login ──
