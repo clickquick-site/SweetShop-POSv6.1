@@ -318,37 +318,8 @@
     <a class="nav-item" href="settings.html" data-role="admin"><span class="nav-label">الإعدادات</span></a>
     <div class="nav-item danger" onclick="doLogout()"><span class="nav-label">تسجيل الخروج</span></div>
   </nav>
-  <div class="sidebar-footer">POS DZ v7.0.0 | 2026</div>
+  <div class="sidebar-footer">POS DZ v7.0.0 | 2026 ®</div>
 </div>
-  <nav class="sidebar-nav">
-    <a class="nav-item" href="sale.html">
-      <span class="nav-label" data-nav="navSale">واجهة البيع</span>
-    </a>
-    <a class="nav-item" href="inventory.html" data-role="admin,manager">
-      <span class="nav-label" data-nav="navInventory">إدارة المخزون</span>
-    </a>
-    <a class="nav-item" href="customers.html" data-role="admin,manager,seller">
-      <span class="nav-label" data-nav="navCustomers">إدارة الزبائن</span>
-    </a>
-    <a class="nav-item" href="reports.html" data-role="admin,manager">
-      <span class="nav-label" data-nav="navReports">إدارة الأعمال</span>
-    </a>
-    <a class="nav-item" href="users.html" data-role="admin">
-      <span class="nav-label" data-nav="navUsers">إدارة المستخدمين</span>
-    </a>
-    <a class="nav-item" href="suppliers.html" data-role="admin,manager">
-      <span class="nav-label" data-nav="navSuppliers">إدارة الموزعين</span>
-    </a>
-    <a class="nav-item" href="settings.html" data-role="admin,manager">
-      <span class="nav-label" data-nav="navSettings">الإعدادات العامة</span>
-    </a>
-    <div class="nav-item danger" onclick="doLogout()">
-      <span class="nav-label" data-nav="navLogout">إغلاق التطبيق</span>
-    </div>
-  </nav>
-  <div class="sidebar-footer">POS DZ v7.0.0 | 2026 بوس ديزاد ®</div>
-</div>
-
 <div id="toast-container"></div>
 <script src="app.js"></script>
 <script>
@@ -655,7 +626,16 @@ function initSearch() {
              (p.barcode && p.barcode.includes(q)) ||
              (p.ref && p.ref.toLowerCase().includes(ql));
     }).slice(0, 10);
-    if (!_searchMatches.length) { list.innerHTML=''; list.style.display='none'; return; }
+    if (!_searchMatches.length) {
+      if (allProducts.length === 0) {
+        list.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text-secondary);font-size:.9rem;">⚠️ لا يوجد منتجات — أضف منتجات من إدارة المخزون</div>';
+        list.style.display = 'block';
+      } else {
+        list.innerHTML = '<div style="padding:10px;text-align:center;color:var(--text-secondary);font-size:.9rem;">🔍 لا توجد نتائج لـ: ' + q + '</div>';
+        list.style.display = 'block';
+      }
+      return;
+    }
     list.style.display = 'block';
     list.innerHTML = _searchMatches.map(p =>
       `<div class="autocomplete-item" onclick="selectProduct(${p.id})">
