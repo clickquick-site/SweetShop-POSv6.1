@@ -1242,66 +1242,21 @@ function _markAllRead() {
 // ── Inject bell button into every page header ─────────────────
 function _injectBell() {
   const header = document.querySelector('.app-header');
-  // Skip if bell already injected by injectHeader() (id=bellBtn) or already injected (_notifBell)
-  if (!header || document.getElementById('_notifBell') || document.getElementById('bellBtn')) return;
-
-  // Bell button — inserted BEFORE the menu button
-  const menuBtn = header.querySelector('.menu-btn');
-  const bell = document.createElement('button');
-  bell.id = '_notifBell';
-  bell.title = 'الإشعارات';
-  bell.style.cssText = `
-    position:relative; background:transparent; border:none;
-    color:var(--text-primary); font-size:1.4rem; cursor:pointer;
-    padding:6px 10px; border-radius:8px; transition:0.2s;
-    line-height:1; flex-shrink:0;
-  `;
-  bell.innerHTML = `
-    🔔
-    <span id="_notifBadge" style="
-      display:none; position:absolute; top:2px; right:4px;
-      background:#ef4444; color:#fff; border-radius:50%;
-      min-width:18px; height:18px; font-size:0.65rem; font-weight:900;
-      font-family:'Cairo',sans-serif; line-height:18px; text-align:center;
-      padding:0 3px; box-shadow:0 0 6px rgba(239,68,68,0.7);
-      pointer-events:none;
-    "></span>
-  `;
-  bell.addEventListener('mouseenter', () => bell.style.background = 'var(--bg-card)');
-  bell.addEventListener('mouseleave', () => bell.style.background = 'transparent');
-  bell.onclick = (e) => { e.stopPropagation(); _toggleNotifPanel(); };
-
-  // Correct order: ☰ | اسم المتجر | 🔔 | POS DZ
-  // Insert bell before app-brand (which is POS DZ)
-  const appBrand = header.querySelector('.app-brand');
-  if (appBrand) header.insertBefore(bell, appBrand);
-  else if (menuBtn) header.insertBefore(bell, menuBtn);
-  else header.appendChild(bell);
-
-  // Notification panel (dropdown)
-  const panel = document.createElement('div');
-  panel.id = '_notifPanel';
-  panel.style.cssText = `
-    display:none; position:fixed; top:68px; right:16px; z-index:9000;
-    width:340px; max-height:480px; overflow-y:auto;
-    background:var(--bg-card); border:1px solid var(--primary);
-    border-radius:14px; box-shadow:0 12px 40px rgba(0,0,0,0.55);
-    font-family:'Cairo',sans-serif;
-  `;
-  document.body.appendChild(panel);
-
-  // Close panel on outside click
-  document.addEventListener('click', (e) => {
-    if (!panel.contains(e.target) && e.target !== bell && !bell.contains(e.target)) {
-      panel.style.display = 'none';
-    }
-  });
-
+  if (!header) return;
+  // لا تُنشئ جرساً ثانياً إذا كان bellBtn موجوداً من injectHeader
+  // فقط تأكد أن _notifPanel موجود في body
+  if (!document.getElementById('_notifPanel') && !document.getElementById('notifPanel')) {
+    const panel = document.createElement('div');
+    panel.id = '_notifPanel';
+    panel.style.cssText = 'display:none;position:fixed;z-index:99999;font-family:Cairo,sans-serif;';
+    document.body.appendChild(panel);
+  }
   _renderBell();
 }
 
 // ── Render badge count ─────────────────────────────────────────
 function _renderBell() {
+  // يعمل مع كلا الـ badge ids
   const badge = document.getElementById('notifBadge') || document.getElementById('_notifBadge');
   if (!badge) return;
   const unread = _loadNotifs().filter(n => !n.read).length;
@@ -1310,47 +1265,38 @@ function _renderBell() {
     badge.textContent   = unread > 99 ? '99+' : String(unread);
   } else {
     badge.style.display = 'none';
+    badge.textContent   = '';
   }
 }
 
 // ── Toggle notification panel ─────────────────────────────────
 function toggleNotifPanel() {
-  const panel = document.getElementById('notifPanel') || document.getElementById('_notifPanel');
+  // يبحث عن أي panel إشعارات مُنشأ
+  const panel = document.getElementById('_notifPanel') || document.getElementById('notifPanel');
   if (!panel) return;
-
-  if (panel.style.display === 'none' || !panel.style.display) {
-    // موضع الـ panel بجانب زر الجرس بـ position:fixed
-    const bell = document.getElementById('bellBtn');
-    if (bell) {
-      const r = bell.getBoundingClientRect();
-      Object.assign(panel.style, {
-        position: 'fixed',
-        top: (r.bottom + 6) + 'px',
-        right: '8px',
-        left: 'auto',
-        width: 'min(320px, 95vw)',
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius)',
-        boxShadow: '0 8px 32px rgba(0,0,0,.6)',
-        zIndex: '9999',
-        maxHeight: '420px',
-        overflowY: 'auto',
-      });
-    }
-    _renderNotifPanel(panel);
-    panel.style.display = 'block';
-    setTimeout(() => {
-      document.addEventListener('click', function closer(e) {
-        if (!panel.contains(e.target) && e.target.id !== 'bellBtn') {
-          panel.style.display = 'none';
-          document.removeEventListener('click', closer);
-        }
-      });
-    }, 50);
-  } else {
+  if (panel.style.display !== 'none') {
     panel.style.display = 'none';
+    return;
   }
+  // احسب موضع الجرس
+  const bell = document.getElementById('_notifBell') || document.getElementById('bellBtn');
+  if (bell) {
+    const r = bell.getBoundingClientRect();
+    panel.style.position   = 'fixed';
+    panel.style.top        = (r.bottom + 6) + 'px';
+    panel.style.right      = '8px';
+    panel.style.left       = 'auto';
+    panel.style.width      = 'min(340px, 95vw)';
+    panel.style.zIndex     = '99999';
+    panel.style.maxHeight  = '480px';
+    panel.style.overflowY  = 'auto';
+    panel.style.background = 'var(--bg-card)';
+    panel.style.border     = '1px solid var(--border)';
+    panel.style.borderRadius = 'var(--radius)';
+    panel.style.boxShadow  = '0 12px 40px rgba(0,0,0,.65)';
+  }
+  _renderNotifPanel(panel);
+  panel.style.display = 'block';
 }
 function _toggleNotifPanel() { toggleNotifPanel(); }
 
