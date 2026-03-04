@@ -636,7 +636,14 @@ function initSearch() {
       return;
     }
     // إعادة تحميل من DB في كل بحث لضمان التزامن مع المخزون
-    allProducts = await dbGetAll('products');
+    try {
+      allProducts = await dbGetAll('products');
+    } catch(e) {
+      console.error('dbGetAll error:', e);
+      toast('خطأ في قراءة المنتجات: ' + e.message, 'danger');
+      return;
+    }
+    console.log('Products loaded:', allProducts.length, 'query:', q);
     const ql = q.toLowerCase();
     _searchMatches = allProducts.filter(p => {
       if (!p || !p.name) return false;
@@ -644,6 +651,7 @@ function initSearch() {
           || (p.barcode && String(p.barcode).includes(q))
           || (p.ref    && p.ref.toLowerCase().includes(ql));
     }).slice(0, 12);
+    console.log('Matches:', _searchMatches.length);
 
     _positionList(input, list);
 
@@ -730,131 +738,6 @@ async function selectProduct(id) {
     document.getElementById('searchInput').value = '';
     document.getElementById('autocompleteList').style.display = 'none';
     _searchMatches = [];
-  }
-}
-
-// ── VKB — works in ALL pages/inputs ──
-const VKB_LAYOUTS = {
-  ar: {
-    title:'لوحة عربية',
-    rows:[
-      ['1','2','3','4','5','6','7','8','9','0','⌫'],
-      ['ض','ص','ث','ق','ف','غ','ع','ه','خ','ح','ج'],
-      ['ش','س','ي','ب','ل','ا','ت','ن','م','ك','ط'],
-      ['ئ','ء','ؤ','ر','لا','ى','ة','و','ز','ظ'],
-      ['SPACE','ENTER']
-    ]
-  },
-  fr: {
-    title:'Clavier Français',
-    rows:[
-      ['1','2','3','4','5','6','7','8','9','0','⌫'],
-      ['a','z','e','r','t','y','u','i','o','p'],
-      ['q','s','d','f','g','h','j','k','l','m'],
-      ['w','x','c','v','b','n',',','.','!','?'],
-      ['é','è','ê','à','ù','â','ô','î','û','ç'],
-      ['SPACE','ENTER']
-    ]
-  },
-  en: {
-    title:'English Keyboard',
-    rows:[
-      ['1','2','3','4','5','6','7','8','9','0','⌫'],
-      ['q','w','e','r','t','y','u','i','o','p'],
-      ['a','s','d','f','g','h','j','k','l'],
-      ['z','x','c','v','b','n','m',',','.'],
-      ['SPACE','ENTER']
-    ]
-  }
-};
-let currentVKBLang = 'ar';
-
-function setVKBLang(lang) {
-  currentVKBLang = lang;
-  const layout = VKB_LAYOUTS[lang] || VKB_LAYOUTS.ar;
-  const container = document.getElementById('vkbKeys');
-  const title = document.getElementById('vkbTitle');
-  if (title) title.textContent = layout.title;
-  ['ar','fr','en'].forEach(l => {
-    const btn = document.getElementById('vkbLang' + l.charAt(0).toUpperCase() + l.slice(1));
-    if (btn) btn.style.background = l === lang ? 'rgba(255,255,255,0.3)' : 'transparent';
-  });
-  if (!container) return;
-  container.innerHTML = '';
-  layout.rows.forEach(row => {
-    const rowDiv = document.createElement('div');
-    rowDiv.className = 'vkb-row';
-    row.forEach(key => {
-      const btn = document.createElement('button');
-      if (key === 'SPACE') {
-        btn.className = 'vkb-key space';
-        btn.textContent = lang==='ar' ? 'مسافة' : (lang==='fr' ? 'Espace' : 'Space');
-        btn.onclick = () => vkbPress(' ');
-      } else if (key === 'ENTER') {
-        btn.className = 'vkb-key enter-key';
-        btn.textContent = lang==='ar' ? 'إدخال ↵' : 'Enter ↵';
-        btn.style.cssText = 'background:var(--primary);color:#fff;font-weight:800;min-width:80px;';
-        btn.onclick = () => vkbPress('ENTER');
-      } else {
-        btn.className = 'vkb-key' + (key==='⌫' ? ' delete' : '');
-        btn.textContent = key;
-        btn.onclick = () => vkbPress(key);
-      }
-      // منع سرقة الـ focus من الخانة النشطة عند الضغط على أي مفتاح
-      btn.addEventListener('mousedown', e => e.preventDefault());
-      rowDiv.appendChild(btn);
-    });
-    container.appendChild(rowDiv);
-  });
-}
-
-function toggleVKB() {
-  document.getElementById('vkbPanel').classList.toggle('open');
-}
-
-function vkbPress(key) {
-  const target = activeInput || document.getElementById('searchInput');
-  if (!target) return;
-
-  if (key === '⌫') {
-    const s = target.selectionStart;
-    if (s > 0) {
-      target.value = target.value.slice(0, s-1) + target.value.slice(s);
-      target.setSelectionRange(s-1, s-1);
-    }
-  } else if (key === 'ENTER') {
-    // Enter — يحاكي ضغطة Enter الحقيقية على الخانة النشطة
-    target.dispatchEvent(new KeyboardEvent('keydown', { key:'Enter', bubbles:true, cancelable:true }));
-    target.dispatchEvent(new KeyboardEvent('keyup',   { key:'Enter', bubbles:true }));
-    return;
-  } else {
-    const s = target.selectionStart;
-    target.value = target.value.slice(0,s) + key + target.value.slice(s);
-    target.setSelectionRange(s+key.length, s+key.length);
-  }
-  target.dispatchEvent(new Event('input', { bubbles:true }));
-  // focus بدون scroll — يُبقي الخلفية تفاعلية
-  target.focus({ preventScroll: true });
-}
-
-function initDraggableVKB() {
-  const panel  = document.getElementById('vkbPanel');
-  const header = document.getElementById('vkbPanelHeader');
-  let dragging=false, startX, startY, origLeft, origBottom;
-  header.addEventListener('mousedown', e => {
-    if (e.target.tagName==='BUTTON') return;
-    dragging=true; startX=e.clientX; startY=e.clientY;
-    const rect=panel.getBoundingClientRect();
-    origLeft=rect.left; origBottom=window.innerHeight-rect.bottom;
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', ()=>{dragging=false;document.removeEventListener('mousemove',onMove);});
-  });
-  function onMove(e) {
-    if (!dragging) return;
-    panel.style.left   = Math.max(0, origLeft + e.clientX - startX) + 'px';
-    panel.style.bottom = Math.max(0, origBottom - (e.clientY - startY)) + 'px';
-    panel.style.right  = 'auto';
-    panel.style.top    = 'auto';
   }
 }
 
